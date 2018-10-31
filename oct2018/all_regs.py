@@ -96,7 +96,6 @@ for a, b in zip(tlats,tlons):
         dlats.append(ii)
         dlons.append(jj)
 
-print(len(dlats))
 mm = np.zeros((len(lats),len(dlats)),dtype=float)
 dd = np.zeros((len(lats),len(dlats)),dtype=float)
 try:
@@ -105,11 +104,11 @@ try:
     mm = np.genfromtxt(MTX, dtype=float)
     dd = np.genfromtxt(MDX, dtype=float)
 except FileNotFoundError:
-#    for ii in range(0,len(lats)):
-#        for jj in range(0,len(dlats)):
     print(len(lats)*len(dlats))
-    for ii in range(0,1):
-        for jj in range(0,1):
+    for ii in range(0,len(lats)):
+        for jj in range(0,len(dlats)):
+#    for ii in range(0,1):
+#        for jj in range(0,1):
             miles, time = calcCarTime(APP_ID,APP_CODE,dlats[jj],dlons[jj],lats[ii],lons[ii],tunit='h')
             print(ii, jj, miles, time)
             mm[ii][jj] = time
@@ -118,7 +117,6 @@ except FileNotFoundError:
     np.savetxt(MDX, dd)
 
 #####################
-'''    
 minm = []
 maxm = []
 mint = []
@@ -129,15 +127,24 @@ medm = []
 medt = []
 stdm = []
 stdt = []
+
 for ii in range(0,len(dlats)):
-    minm.append(np.min(mm.T[ii]))
-    mint.append(np.min(dd.T[ii]))
-    maxm.append(np.max(mm.T[ii]))
-    maxt.append(np.max(dd.T[ii]))
-'''
+    minm.append(np.nanmin(mm.T[ii]))
+    mint.append(np.nanmin(dd.T[ii]))
+
+minm=np.array(minm, dtype=float)
+mint=np.array(mint, dtype=float)
+minm[np.isnan(minm)]=1000000.
 
 x, y = m(lons, lats)
 ux, uy = m(dlons, dlats)
+print(len(ux),type(ux))
+print(len(uy),type(uy))
+print(len(minm),type(minm[0]))
+
+#####################
+#Plots
+cmap = cm.get_cmap('jet')
 
 plt.figure(figsize=(10,8))
 m.drawcoastlines(linewidth=0.5)
@@ -145,15 +152,21 @@ m.drawparallels(np.arange(-90.,91.,15.),labels=[True,True,False,False],dashes=[2
 m.drawmeridians(np.arange(-180.,181.,15.),labels=[False,False,False,True],dashes=[2,2])
 m.drawcountries(linewidth=2, linestyle='solid', color='k' ) 
 m.drawstates(linewidth=0.5, linestyle='solid', color='k')
-plt.title('Driving Distance to Regionals')
+plt.title('Regionals Locations')
 m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+
+plt.figure(figsize=(10,8))
+m.drawcoastlines(linewidth=0.5)
+m.drawparallels(np.arange(-90.,91.,15.),labels=[True,True,False,False],dashes=[2,2])
+m.drawmeridians(np.arange(-180.,181.,15.),labels=[False,False,False,True],dashes=[2,2])
+m.drawcountries(linewidth=2, linestyle='solid', color='k' ) 
+m.drawstates(linewidth=0.5, linestyle='solid', color='k')
+plt.title('Regionals Interpolation Grid')
 m.plot(ux,uy, 'o', markersize=5,zorder=6, markerfacecolor='#80b442',markeredgecolor="none", alpha=0.66)
 
-'''
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,minm_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,minm,tri=True, extend='both',cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -167,10 +180,11 @@ plt.title('Drive Distance to Regionals - Minimum')
 # translucent blue scatter plot of epicenters above histogram:    
 m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
 
+'''minm
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
 cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,mint_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,mint,tri=True, extend='both',cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -180,10 +194,12 @@ m.drawcountries(linewidth=2, linestyle='solid', color='k' )
 m.drawstates(linewidth=0.5, linestyle='solid', color='k')
 cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Hours")
-plt.title('Drive Time to Regionals - Closest')
+plt.title('Drive Time to Regionals - Minimum')
 # translucent blue scatter plot of epicenters above histogram:    
 m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
 
+'''
+'''
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
 cmap = cm.get_cmap('jet')

@@ -10,6 +10,7 @@ from pylab import *
 from scipy.interpolate import griddata
 import sys
 import matplotlib.mlab as mlab
+from matplotlib import ticker
 from here import *
 from heapq import nsmallest, nlargest
 
@@ -22,6 +23,7 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 mpl.rcParams['axes.labelsize'] = label_size
 mpl.rcParams['axes.titlesize'] = label_size + 4
+# inspired by http://nipunbatra.github.io/2014/08/latexify/
 
 DF = "all_regs.csv"
 MTX = DF.strip('.csv')+'_time.mtx'
@@ -116,6 +118,19 @@ except FileNotFoundError:
     np.savetxt(MTX, mm)
     np.savetxt(MDX, dd)
 
+# remove the nan columns
+plot_lats = []
+plot_lons = []
+plot_mm = mm[:,~np.all(np.isnan(mm), axis=0)]
+plot_dd = dd[:,~np.all(np.isnan(dd), axis=0)]
+for ii in range(0,len(dlats)):
+    # check if column is nan
+    if(not(isnan(mm[0][ii]) or isnan(mm[0][ii]))):
+        plot_lats.append(dlats[ii])
+        plot_lons.append(dlons[ii])
+
+plot_lats = np.asarray(plot_lats)
+plot_lons = np.asarray(plot_lons)
 #####################
 minm = []
 maxm = []
@@ -128,23 +143,28 @@ medt = []
 stdm = []
 stdt = []
 
-for ii in range(0,len(dlats)):
-    minm.append(np.nanmin(mm.T[ii]))
-    mint.append(np.nanmin(dd.T[ii]))
+for ii in range(0,len(plot_lats)):
+    mint.append(np.nanmin(plot_mm.T[ii]))
+    minm.append(np.nanmin(plot_dd.T[ii]))
+    maxt.append(np.nanmax(plot_mm.T[ii]))
+    maxm.append(np.nanmax(plot_dd.T[ii]))
+    avet.append(np.nanmean(plot_mm.T[ii]))
+    avem.append(np.nanmean(plot_dd.T[ii]))
+    medt.append(np.nanmedian(plot_mm.T[ii]))
+    medm.append(np.nanmedian(plot_dd.T[ii]))
+    stdt.append(np.std(plot_mm.T[ii]))
+    stdm.append(np.std(plot_dd.T[ii]))
 
 minm=np.array(minm, dtype=float)
 mint=np.array(mint, dtype=float)
-minm[np.isnan(minm)]=1000000.
 
 x, y = m(lons, lats)
-ux, uy = m(dlons, dlats)
-print(len(ux),type(ux))
-print(len(uy),type(uy))
-print(len(minm),type(minm[0]))
+ux, uy = m(plot_lons, plot_lats)
 
 #####################
 #Plots
-cmap = cm.get_cmap('jet')
+cmap='plasma_r'
+point_hex='#008080'
 
 plt.figure(figsize=(10,8))
 m.drawcoastlines(linewidth=0.5)
@@ -153,7 +173,7 @@ m.drawmeridians(np.arange(-180.,181.,15.),labels=[False,False,False,True],dashes
 m.drawcountries(linewidth=2, linestyle='solid', color='k' ) 
 m.drawstates(linewidth=0.5, linestyle='solid', color='k')
 plt.title('Regionals Locations')
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 plt.figure(figsize=(10,8))
 m.drawcoastlines(linewidth=0.5)
@@ -166,7 +186,7 @@ m.plot(ux,uy, 'o', markersize=5,zorder=6, markerfacecolor='#80b442',markeredgeco
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-CS1 = m.contourf(ux,uy,minm,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,minm,tri=True, levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -178,13 +198,11 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Miles")
 plt.title('Drive Distance to Regionals - Minimum')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
-'''minm
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,mint,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,mint,tri=True, levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -193,17 +211,18 @@ m.drawmeridians(np.arange(-180.,181.,15.),labels=[False,False,False,True],dashes
 m.drawcountries(linewidth=2, linestyle='solid', color='k' ) 
 m.drawstates(linewidth=0.5, linestyle='solid', color='k')
 cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
+tick_locator = ticker.MaxNLocator(nbins=10)
+cbar.locator = tick_locator
+cbar.update_ticks()
 cbar.set_label("Hours")
 plt.title('Drive Time to Regionals - Minimum')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
-'''
-'''
+
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,minm_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,maxm,tri=True, levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -215,12 +234,11 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Miles")
 plt.title('Drive Distance to Regionals - Maximum')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,mint_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,maxt,tri=True, levels=20,cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -232,12 +250,11 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Hours")
 plt.title('Drive Time to Regionals - Maximum')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,minm_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,avem,tri=True,levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -249,29 +266,27 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Miles")
 plt.title('Drive Distance to Regionals - Mean')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,mint_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,avet,tri=True,levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
 m.drawparallels(np.arange(-90.,91.,15.),labels=[True,True,False,False],dashes=[2,2])
 m.drawmeridians(np.arange(-180.,181.,15.),labels=[False,False,False,True],dashes=[2,2])
-m.drawcountries(linewidth=2, linestyle='solid', color='k' ) 
+m.drawcountries(linewidth=2, linestyle='solid', color='k' )
 m.drawstates(linewidth=0.5, linestyle='solid', color='k')
 cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Hours")
 plt.title('Drive Time to Regionals - Mean')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,minm_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,medm,tri=True, levels=20,cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -283,12 +298,11 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Miles")
 plt.title('Drive Distance to Regionals - Median')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,mint_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,medt,tri=True,levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -300,12 +314,11 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Hours")
 plt.title('Drive Time to Regionals - Median')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,minm_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,stdm,tri=True,levels=20, cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -317,12 +330,11 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Miles")
 plt.title('Drive Distance to Regionals - SD')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-cmap = cm.get_cmap('jet')
-CS1 = m.contourf(ux,uy,mint_mask,tri=True, extend='both',cmap=cmap)
+CS1 = m.contourf(ux,uy,stdt,tri=True,levels=20,cmap=cmap)
 # draw coastlines, lat/lon lines.
 m.drawcoastlines(linewidth=0.5)
 # draw parallels and meridians.
@@ -334,7 +346,6 @@ cbar = m.colorbar(location="bottom",pad=0.4) # draw colorbar
 cbar.set_label("Hours")
 plt.title('Drive Time to Regionals - SD')
 # translucent blue scatter plot of epicenters above histogram:    
-m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor='#80a442',markeredgecolor="none", alpha=0.66)
+m.plot(x, y, 'o', markersize=5,zorder=6, markerfacecolor=point_hex,markeredgecolor="none", alpha=0.66)
 
-'''
 plt.show()
